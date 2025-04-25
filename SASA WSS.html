@@ -1,0 +1,1984 @@
+<!DOCTYPE html><html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SASA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://db.onlinewebfonts.com/c/5703d16b1c7c347589cbb41360ebcb18?family=Clonoid+W03+Semibold" rel="stylesheet">
+<style>
+    .clonoid-font { font-family: "Clonoid W03 Semibold", sans-serif; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    canvas { max-height: 300px; }
+    #methodTable th, #methodTable td { text-align: center; vertical-align: middle; }
+    #methodTable input, #methodTable select { width: 100%; padding: 5px; border-radius: 4px; border: 1px solid #ccc; }
+    #methodTable .symbol-cell { font-size: 1.0rem; color: #1e40af; }
+    #methodTable .distance-input { display: none; margin-top: 5px; }
+    #methodTable .distance-input.active { display: block; }
+    .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.4); }
+    .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; }
+    .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+    .close-btn:hover, .close-btn:focus { color: black; text-decoration: none; cursor: pointer; }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-content { display: none; position: absolute; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; }
+    .dropdown-content button { color: black; padding: 12px 16px; text-decoration: none; display: block; width: 100%; text-align: left; }
+    .dropdown-content button:hover { background-color: #f1f1f1; }
+    .dropdown:hover .dropdown-content { display: block; }
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <nav class="bg-blue-800 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <button onclick="switchTab('home')" class="text-2xl font-bold clonoid-font hover:text-gray-200">SASA WSS</button>
+            <button id="supportBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Destek</button>
+        </div>
+    </nav>
+<div id="supportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">×</span>
+        <h2 class="text-xl font-bold mb-4">Destek</h2>
+        <div id="supportContent">
+            <p>SONUÇLAR SAYFASININ KARIŞMAMASI İÇİN; ZAMAN ETÜDÜ ANALİZİ YAPTIKTAN SONRA, METOT ETÜDÜ ANALİZİ YAPMADAN ÖNCE, LÜTFEN SAYFAYI YENİLEYİNİZ. Lütfen operatör/makine ve süreç adlarını aynı (büyük küçük harf dahil) girdiğinizden emin olunuz. Tablo başlıkları ve sıralamasına dikkat ediniz. Eğer bir hata alırsanız önce sayfayı yenileyiniz. Soru ve önerileriniz için: sasastaj@outlook.com</p>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white border-b">
+    <div class="container mx-auto flex">
+        <button class="tab-btn px-4 py-2 border-b-2 border-blue-500 font-medium" data-tab="home">Ana Sayfa</button>
+        <div class="dropdown">
+            <button class="tab-btn px-4 py-2">Zaman Etüdü</button>
+            <div class="dropdown-content">
+                <button onclick="switchTab('upload')">Veri Yükle</button>
+                <button onclick="switchTab('manual')">Manuel Giriş</button>
+            </div>
+        </div>
+        <button class="tab-btn px-4 py-2" data-tab="method">Metot Etüdü</button>
+        <button class="tab-btn px-4 py-2" disabled id="results-tab" data-tab="results">Sonuçlar</button>
+    </div>
+</div>
+
+<div class="container mx-auto p-4 flex-grow">
+    <div id="home" class="tab-content active bg-white p-6 rounded-lg shadow-md">
+        <div class="text-center">
+            <h2 class="text-3xl clonoid-font mb-4 text-blue-800">İŞ ETÜDÜ SİSTEMİ</h2>
+            <p class="text-lg text-gray-600 mb-6">Bu araç, iş süreçlerinizi analiz etmenize, verimliliği artırmanıza ve iyileştirme önerileri almanıza olanak tanır.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-blue-50 p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
+                <h3 class="text-xl font-semibold mb-2 text-blue-700">Zaman Etüdü</h3>
+                <p class="text-gray-600 mb-4">Süreç sürelerini analiz ederek performans ölçümü yapın.</p>
+                <div class="flex space-x-4 justify-center">
+                    <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="switchTab('upload')">Veri Yükle</button>
+                    <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onclick="switchTab('manual')">Manuel Giriş</button>
+                </div>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
+                <h3 class="text-xl font-semibold mb-2 text-purple-700">Metot Etüdü</h3>
+                <p class="text-gray-600 mb-4">Süreç adımlarını analiz ederek iş akışını optimize edin.</p>
+                <button class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700" onclick="switchTab('method')">Metot Etüdü Yap</button>
+            </div>
+        </div>
+        <div class="mt-8">
+            <h3 class="text-lg font-semibold mb-2 text-center">Katma Değer Kılavuzu</h3>
+            <div class="bg-gray-50 p-4 rounded-md">
+                <p class="mb-2"><span class="font-medium">Katma Değerli (KD):</span> Müşterilerin ödeme yapmaya istekli olduğu ürün veya hizmeti doğrudan dönüştüren faaliyetler.</p>
+                <p class="mb-2"><span class="font-medium">Katma Değersiz (KDZ):</span> Maliyet ekleyen ancak değer katmayan ve ortadan kaldırılması gereken faaliyetler.</p>
+                <p><span class="font-medium">İş için Katma Değerli (İKD):</span> Doğrudan değer katmayan ancak mevcut koşullar altında gerekli olan faaliyetler.</p>
+            </div>
+        </div>
+        <div class="mt-8 text-center">
+            <h3 class="text-lg font-semibold mb-2">Örnek Veri Formatı (Zaman Etüdü)</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border mx-auto">
+                    <thead>
+                        <tr>
+                            <th class="border px-4 py-2">Operatör</th>
+                            <th class="border px-4 py-2">Süreç</th>
+                            <th class="border px-4 py-2">Süre</th>
+                            <th class="border px-4 py-2">Kategori</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sample-table"></tbody>
+                </table>
+            </div>
+            <button class="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="downloadSampleExcel()">Örnek Excel İndir</button>
+        </div>
+    </div>
+
+    <div id="upload" class="tab-content bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-bold mb-4">Veri Yükle (Zaman Etüdü)</h2>
+        <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Bir CSV veya Excel dosyası seçin</label>
+            <input type="file" accept=".csv, .xlsx, .xls" id="csvFile" class="border p-2 w-full" onchange="handleFileChange(event)">
+        </div>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" id="uploadBtn" disabled onclick="handleFileUpload()">Yükle ve Analiz Et</button>
+    </div>
+
+    <div id="manual" class="tab-content bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-bold mb-4">Elle Veri Girişi (Zaman Etüdü)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium mb-1">Süreç</label>
+                <input type="text" id="process" class="border p-2 w-full rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Operatör</label>
+                <input type="text" id="operator" class="border p-2 w-full rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Süre (saniye)</label>
+                <input type="number" id="time" class="border p-2 w-full rounded">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Kategori</label>
+                <select id="category" class="border p-2 w-full rounded">
+                    <option value="KD">Katma Değerli (KD)</option>
+                    <option value="KDZ">Katma Değersiz (KDZ)</option>
+                    <option value="İKD">İş için Katma Değerli (İKD)</option>
+                </select>
+            </div>
+        </div>
+        <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 mb-6" onclick="handleManualEntry()">Giriş Ekle</button>
+        <div id="manual-entries" class="hidden">
+            <h3 class="text-lg font-semibold mb-2">Girilen Veriler</h3>
+            <div class="overflow-x-auto mb-6">
+                <table class="min-w-full bg-white border">
+                    <thead>
+                        <tr>
+                            <th class="border px-4 py-2">Süreç</th>
+                            <th class="border px-4 py-2">Operatör</th>
+                            <th class="border px-4 py-2">Süre</th>
+                            <th class="border px-4 py-2">Kategori</th>
+                            <th class="border px-4 py-2">Eylem</th>
+                        </tr>
+                    </thead>
+                    <tbody id="manual-table"></tbody>
+                </table>
+            </div>
+            <div class="flex space-x-4">
+                <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="analyzeTimeData()">Veriyi Analiz Et</button>
+                <button class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" onclick="downloadManualExcel()">Excel İndir</button>
+                <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700" onclick="resetAll()">Tümünü Sıfırla</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="method" class="tab-content bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-xl font-bold mb-4">Metot Etüdü Girişi</h2>
+        <div class="mb-6">
+            <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onclick="addMethodRow()">Yeni Adım Ekle</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border" id="methodTable">
+                <thead>
+                    <tr>
+                        <th class="border px-4 py-2">FAALİYET</th>
+                        <th class="border px-4 py-2">SÜRE (s)</th>
+                        <th class="border px-4 py-2">İş Türü</th>
+                        <th class="border px-4 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody id="methodTableBody"></tbody>
+                <tfoot>
+                    <tr class="font-bold bg-gray-100">
+                        <td class="border px-4 py-2">TOPLAM SÜRE</td>
+                        <td class="border px-4 py-2" id="totalTime">0</td>
+                        <td class="border px-4 py-2"></td>
+                        <td class="border px-4 py-2"></td>
+                    </tr>
+                    <tr class="font-bold bg-gray-100">
+                        <td class="border px-4 py-2">İşlem (○)</td>
+                        <td class="border px-4 py-2" id="totalOperation">0</td>
+                        <td class="border px-4 py-2"></td>
+                        <td class="border px-4 py-2"></td>
+                    </tr>
+                    <tr class="font-bold bg-gray-100">
+                        <td class="border px-4 py-2">Taşıma (→)</td>
+                        <td class="border px-4 py-2" id="totalTransport">0</td>
+                        <td class="border px-4 py-2"></td>
+                        <td class="border px-4 py-2"></td>
+                    </tr>
+                    <tr class="font-bold bg-gray-100">
+                        <td class="border px-4 py-2">Kontrol (□)</td>
+                        <td class="border px-4 py-2" id="totalInspection">0</td>
+                        <td class="border px-4 py-2"></td>
+                        <td class="border px-4 py-2"></td>
+                    </tr>
+                    <tr class="font-bold bg-gray-100">
+                        <td class="border px-4 py-2">Depolama (∇)</td>
+                        <td class="border px-4 py-2" id="totalStorage">0</td>
+                        <td class="border px-4 py-2"></td>
+                        <td class="border px-4 py-2"></td>
+                    </tr>
+                    <tr class="font-bold bg-gray-100">
+                        <td class="border px-4 py-2">Bekleme (D)</td>
+                        <td class="border px-4 py-2" id="totalDelay">0</td>
+                        <td class="border px-4 py-2"></td>
+                        <td class="border px-4 py-2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="mt-6">
+            <h3 class="text-lg font-semibold mb-2">Metot Etüdü Sembolleri</h3>
+            <div class="bg-gray-50 p-4 rounded-md grid grid-cols-1 md:grid-cols-3 gap-4">
+                <p><span class="font-medium">İşlem </span><span class="text-2xl">○</span>: Bir malzemenin şeklinin veya özelliklerinin değiştirilmesi.</p>
+                <p><span class="font-medium">Taşıma </span><span class="text-2xl">→</span>: Malzemenin bir yerden başka bir yere taşınması.</p>
+                <p><span class="font-medium">Kontrol </span><span class="text-2xl">□</span>: Kalite veya miktar kontrolü.</p>
+                <p><span class="font-medium">Bekleme </span><span class="text-2xl">D</span>: İşin geçici olarak durması.</p>
+                <p><span class="font-medium">Depolama </span><span class="text-2xl">∇</span>: Malzemenin uzun süreli saklanması.</p>
+            </div>
+        </div>
+        <div class="flex space-x-4 mt-6">
+            <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="submitMethodForm()">Analiz Et</button>
+            <button class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700" onclick="downloadMethodExcel()">Excel İndir</button>
+            <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700" onclick="resetMethod()">Tümünü Sıfırla</button>
+        </div>
+    </div>
+
+    <div id="results" class="tab-content space-y-6">
+        <div class="bg-white p-6 rounded-lg shadow-md" id="time-study-results" style="display: none;">
+            <h2 class="text-xl font-bold mb-4">Zaman Etüdü Sonuçları</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Süreç Süre Dağılımı</h3>
+                    <canvas id="processTimeChart"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Operatör Hız Karşılaştırması</h3>
+                    <canvas id="operatorSpeedChart"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">KD-KDZ-İKD Dağılımı</h3>
+                    <canvas id="processTypeChart"></canvas>
+                    <p class="mt-4 text-center font-semibold" id="vaRatio"></p>
+                </div>
+                <div id="operatorBreakdowns" class="space-y-6"></div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Standart Sapma Analizi</h3>
+                    <canvas id="stdDevChart"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Süreç Süre Trendleri</h3>
+                    <canvas id="processTrendsChart"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Standart Süre Hesaplama</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Tolerans Değeri (%)</label>
+                            <input type="number" id="toleranceValue" class="border p-2 w-full rounded" placeholder="Tolerans değerini girin">
+                        </div>
+                        <div class="flex items-end">
+                            <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="calculateStandardTime()">Standart Süreyi Hesapla</button>
+                        </div>
+                    </div>
+                    <div id="standardTimeResult" class="hidden">
+                        <h4 class="text-md font-semibold mb-2">Standart Süre</h4>
+                        <p class="text-center font-semibold" id="standardTimeValue"></p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">İyileştirme Önerileri</h3>
+                    <button class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 mb-6" onclick="generateSuggestions()">İyileştirme Önerileri Oluştur</button>
+                    <div id="suggestionsResult" class="hidden">
+                        <h4 class="text-md font-semibold mb-2">Operatör Performans Önerileri</h4>
+                        <div id="suggestionsContent" class="p-4 bg-gray-50 rounded-md"></div>
+                    </div>
+                </div>
+                <div class="flex justify-center mt-6">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700" onclick="downloadTimeStudyPDF()">PDF Olarak İndir</button>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md" id="method-study-results" style="display: none;">
+            <h2 class="text-xl font-bold mb-4">Metot Etüdü Sonuçları</h2>
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Adım Türü Dağılımı</h3>
+                    <canvas id="methodTypeChart"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Süreç Akış Analizi</h3>
+                    <div id="methodFlowTable" class="overflow-x-auto">
+                        <table class="min-w-full bg-white border">
+                            <thead>
+                                <tr>
+                                    <th class="border px-4 py-2">Adım</th>
+                                    <th class="border px-4 py-2">Tür</th>
+                                    <th class="border px-4 py-2">Süre (s)</th>
+                                    <th class="border px-4 py-2">Mesafe (m)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="method-flow-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold mb-2">Sembol Alt Toplamları ve İşlem Sayıları</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white border">
+                            <thead>
+                                <tr>
+                                    <th class="border px-4 py-2">İşlem (○)</th>
+                                    <th class="border px-4 py-2">Taşıma (→)</th>
+                                    <th class="border px-4 py-2">Kontrol (□)</th>
+                                    <th class="border px-4 py-2">Depolama (∇)</th>
+                                    <th class="border px-4 py-2">Bekleme (D)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="symbol-totals-table-body"></tbody>
+                        </table>
+                        <table class="min-w-full bg-white border mt-4">
+                            <thead>
+                                <tr>
+                                    <th class="border px-4 py-2 bg-gray-100 font-bold">İşlem Sayısı</th>
+                                    <th class="border px-4 py-2"></th>
+                                    <th class="border px-4 py-2"></th>
+                                    <th class="border px-4 py-2"></th>
+                                    <th class="border px-4 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="symbol-counts-table-body">
+                                <tr>
+                                    <td class="border px-4 py-2">İşlem (○)</td>
+                                    <td class="border px-4 py-2">Taşıma (→)</td>
+                                    <td class="border px-4 py-2">Kontrol (□)</td>
+                                    <td class="border px-4 py-2">Depolama (∇)</td>
+                                    <td class="border px-4 py-2">Bekleme (D)</td>
+                                </tr>
+                                <tr id="symbol-counts-row"></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="flex justify-center mt-6">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700" onclick="downloadMethodStudyPDF()">PDF Olarak İndir</button>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-bold mb-4">Analiz Özeti</h2>
+            <div class="p-4 bg-gray-50 rounded-md">
+                <p class="mb-2">Bu analiz, seçilen çalışma türüne göre aşağıdaki çıkarımları sağlar:</p>
+                <ul id="analysis-summary" class="list-disc list-inside space-y-1"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="bg-blue-800 text-white p-4 mt-8">
+    <div class="container mx-auto text-center">
+        <p>© 2025 SASA OPEX</p>
+    </div>
+</footer>
+
+<script>
+    let timeData = [];
+    let manualEntries = [];
+    let methodEntries = [];
+    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+    const activityColors = ['#4CAF50', '#FF5722', '#2196F3'];
+    let currentMode = null;
+
+    let charts = {
+        processTimeChart: null,
+        operatorSpeedChart: null,
+        processTypeChart: null,
+        stdDevChart: null,
+        processTrendsChart: null,
+        methodTypeChart: null,
+        operatorBreakdowns: {}
+    };
+
+    const sampleData = [
+        { operator: 'AGV MC01', process: 'Bobin alma', time: 45, category: 'İKD' },
+        { operator: 'AGV MC02', process: 'Bobin alma', time: 48, category: 'İKD' },
+        { operator: 'AGV MC01', process: 'DUMa geliş', time: 680, category: 'İKD' },
+        { operator: 'AGV MC02', process: 'DUMa geliş', time: 640, category: 'İKD' }
+    ];
+
+    const supportModal = document.getElementById('supportModal');
+    document.getElementById('supportBtn').addEventListener('click', openModal);
+
+    function openModal() { supportModal.style.display = 'block'; }
+    function closeModal() { supportModal.style.display = 'none'; }
+    window.onclick = function(event) { if (event.target === supportModal) supportModal.style.display = 'none'; };
+
+    window.onload = () => {
+        const sampleTable = document.getElementById('sample-table');
+        sampleData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${row.operator}</td>
+                <td class="border px-4 py-2">${row.process}</td>
+                <td class="border px-4 py-2">${row.time}</td>
+                <td class="border px-4 py-2">${row.category}</td>
+            `;
+            sampleTable.appendChild(tr);
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
+                if (document.getElementById('manual').classList.contains('active')) {
+                    event.preventDefault();
+                    handleManualEntry();
+                }
+            }
+        });
+    };
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!btn.disabled && !btn.parentElement.classList.contains('dropdown')) switchTab(btn.dataset.tab);
+        });
+    });
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('border-b-2', 'border-blue-500', 'font-medium'));
+        document.getElementById(tabId).classList.add('active');
+        document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('border-b-2', 'border-blue-500', 'font-medium');
+        if (tabId === 'results') {
+            document.getElementById('time-study-results').style.display = currentMode === 'time' ? 'block' : 'none';
+            document.getElementById('method-study-results').style.display = currentMode === 'method' ? 'block' : 'none';
+        }
+    }
+
+    function handleFileChange(event) {
+        const file = event.target.files[0];
+        document.getElementById('uploadBtn').disabled = !file;
+        if (!file) return;
+
+        currentMode = 'time';
+        const fileExtension = file.name.split('.').pop().toLowerCase();
+        const reader = new FileReader();
+        if (fileExtension === 'csv') {
+            reader.onload = (e) => processCSV(e.target.result);
+            reader.readAsText(file);
+        } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+            reader.onload = (e) => processExcel(e.target.result);
+            reader.readAsArrayBuffer(file);
+        } else {
+            alert('Lütfen bir CSV veya Excel dosyası (.csv, .xlsx, .xls) seçin.');
+        }
+    }
+
+    function handleFileUpload() {
+        if (document.getElementById('csvFile').files[0]) {
+            handleFileChange({ target: { files: [document.getElementById('csvFile').files[0]] } });
+        }
+    }
+
+    function processCSV(text) {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        const headers = lines[0].split(',');
+        const jsonData = [];
+        for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',');
+            const entry = {};
+            headers.forEach((header, j) => {
+                let key = header.trim().toLowerCase();
+                if (key.includes('operatör')) key = 'operator';
+                else if (key.includes('süreç')) key = 'process';
+                else if (key.includes('süre')) key = 'time';
+                else if (key.includes('kategori')) key = 'category';
+                entry[key] = values[j] ? values[j].trim() : '';
+                if (key === 'time') entry[key] = parseFloat(entry[key]) || 0;
+            });
+            jsonData.push(entry);
+        }
+        prepareTimeData(jsonData);
+        document.getElementById('results-tab').disabled = false;
+        switchTab('results');
+    }
+
+    function processExcel(arrayBuffer) {
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheet = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheet];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const headers = jsonData[0];
+        const dataRows = jsonData.slice(1).filter(row => row.length > 0);
+        const formattedData = [];
+        dataRows.forEach(row => {
+            const entry = {};
+            headers.forEach((header, index) => {
+                let key = header.trim().toLowerCase();
+                if (key.includes('operatör')) key = 'operator';
+                else if (key.includes('süreç')) key = 'process';
+                else if (key.includes('süre')) key = 'time';
+                else if (key.includes('kategori')) key = 'category';
+                entry[key] = row[index] ? row[index].toString().trim() : '';
+                if (key === 'time') entry[key] = parseFloat(entry[key]) || 0;
+            });
+            formattedData.push(entry);
+        });
+        prepareTimeData(formattedData);
+        document.getElementById('results-tab').disabled = false;
+        switchTab('results');
+    }
+
+    function handleManualEntry() {
+        const process = document.getElementById('process').value.trim();
+        const operator = document.getElementById('operator').value.trim();
+        const time = parseFloat(document.getElementById('time').value) || 0;
+        const category = document.getElementById('category').value;
+        if (process && operator && time > 0 && category) {
+            const entry = { process, operator, time, category };
+            manualEntries.push(entry);
+            const table = document.getElementById('manual-table');
+            const tr = document.createElement('tr');
+            tr.dataset.index = manualEntries.length - 1;
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${entry.process}</td>
+                <td class="border px-4 py-2">${entry.operator}</td>
+                <td class="border px-4 py-2">${entry.time}</td>
+                <td class="border px-4 py-2">${entry.category}</td>
+                <td class="border px-4 py-2">
+                    <button class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" onclick="deleteEntry(${manualEntries.length - 1})">Sil</button>
+                </td>
+            `;
+            table.appendChild(tr);
+            document.getElementById('manual-entries').classList.remove('hidden');
+            document.getElementById('process').value = '';
+            document.getElementById('operator').value = '';
+            document.getElementById('time').value = '';
+        } else {
+            alert('Lütfen tüm alanları doldurun, geçerli bir süre girin ve bir kategori seçin.');
+        }
+    }
+
+    function deleteEntry(index) {
+        manualEntries.splice(index, 1);
+        const table = document.getElementById('manual-table');
+        table.innerHTML = '';
+        manualEntries.forEach((entry, i) => {
+            const tr = document.createElement('tr');
+            tr.dataset.index = i;
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${entry.process}</td>
+                <td class="border px-4 py-2">${entry.operator}</td>
+                <td class="border px-4 py-2">${entry.time}</td>
+                <td class="border px-4 py-2">${entry.category}</td>
+                <td class="border px-4 py-2">
+                    <button class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" onclick="deleteEntry(${i})">Sil</button>
+                </td>
+            `;
+            table.appendChild(tr);
+        });
+        if (manualEntries.length === 0) document.getElementById('manual-entries').classList.add('hidden');
+    }
+
+    function analyzeTimeData() {
+        currentMode = 'time';
+        prepareTimeData(manualEntries);
+        document.getElementById('results-tab').disabled = false;
+        switchTab('results');
+    }
+
+    function prepareTimeData(dataArray) {
+        timeData = dataArray.map(row => ({
+            ...row,
+            vaTime: row.category === 'KD' ? row.time : 0,
+            nvaTime: row.category === 'KDZ' ? row.time : 0,
+            bvaTime: row.category === 'İKD' ? row.time : 0
+        }));
+        calculateTimeChartData();
+    }
+
+    function addMethodRow() {
+        const tbody = document.getElementById('methodTableBody');
+        const rowIndex = methodEntries.length;
+        const tr = document.createElement('tr');
+        tr.setAttribute('data-index', rowIndex);
+        tr.innerHTML = `
+            <td class="border px-4 py-2">
+                <input type="text" class="step-name w-full" placeholder="Adım adını girin" oninput="updateMethodEntry(${rowIndex})">
+            </td>
+            <td class="border px-4 py-2">
+                <input type="number" step="0.1" class="step-time w-full" placeholder="Süre girin" oninput="updateMethodEntry(${rowIndex})">
+            </td>
+            <td class="border px-4 py-2 symbol-cell">
+                <select class="step-type w-full" onchange="updateSymbol(${rowIndex})">
+                    <option value="">Sembol Seçin</option>
+                    <option value="İşlem">İşlem (○)</option>
+                    <option value="Taşıma">Taşıma (→)</option>
+                    <option value="Kontrol">Kontrol (□)</option>
+                    <option value="Depolama">Depolama (∇)</option>
+                    <option value="Bekleme">Bekleme (D)</option>
+                </select>
+                <div class="distance-input" id="distance-input-${rowIndex}">
+                    <input type="number" step="0.1" class="step-distance w-full" placeholder="Mesafe (m)" oninput="updateDistance(${rowIndex})">
+                </div>
+            </td>
+            <td class="border px-4 py-2">
+                <button class="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600" onclick="deleteMethodRow(${rowIndex})">Sil</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        methodEntries.push({ step: '', time: 0, type: '', distance: 0 });
+        updateTotals();
+    }
+
+    function updateMethodEntry(index) {
+        const row = document.querySelector(`tr[data-index="${index}"]`);
+        if (!row) return;
+        const step = row.querySelector('.step-name').value || `Adım ${index + 1}`;
+        const time = parseFloat(row.querySelector('.step-time').value) || 0;
+        methodEntries[index].step = step;
+        methodEntries[index].time = time;
+        updateTotals();
+    }
+
+    function updateSymbol(index) {
+        const row = document.querySelector(`tr[data-index="${index}"]`);
+        if (!row) return;
+        const select = row.querySelector('.step-type');
+        const type = select.value;
+        const symbolCell = row.querySelector('.symbol-cell');
+        const distanceInput = row.querySelector(`#distance-input-${index}`);
+        const symbolSpan = symbolCell.querySelector('.symbol-display') || document.createElement('span');
+        symbolSpan.className = 'symbol-display';
+        symbolSpan.textContent = getSymbol(type);
+        if (!symbolCell.querySelector('.symbol-display')) symbolCell.insertBefore(symbolSpan, distanceInput);
+        if (type === 'Taşıma') {
+            distanceInput.classList.add('active');
+        } else {
+            distanceInput.classList.remove('active');
+            const distanceField = distanceInput.querySelector('.step-distance');
+            if (distanceField) distanceField.value = '';
+            methodEntries[index].distance = 0;
+        }
+        methodEntries[index].type = type;
+        updateTotals();
+    }
+
+    function updateDistance(index) {
+        const row = document.querySelector(`tr[data-index="${index}"]`);
+        if (!row) return;
+        const distanceInput = row.querySelector(`#distance-input-${index} .step-distance`);
+        const distance = parseFloat(distanceInput.value) || 0;
+        methodEntries[index].distance = distance;
+        updateTotals();
+    }
+
+    function getSymbol(type) {
+        switch (type) {
+            case 'İşlem': return '';
+            case 'Taşıma': return '';
+            case 'Kontrol': return '';
+            case 'Depolama': return '';
+            case 'Bekleme': return '';
+            default: return '';
+        }
+    }
+
+    function deleteMethodRow(index) {
+        methodEntries.splice(index, 1);
+        const tbody = document.getElementById('methodTableBody');
+        const row = document.querySelector(`tr[data-index="${index}"]`);
+        if (row) row.remove();
+        const remainingRows = tbody.querySelectorAll('tr');
+        remainingRows.forEach((row, newIndex) => {
+            row.setAttribute('data-index', newIndex);
+            const stepName = row.querySelector('.step-name');
+            const stepTime = row.querySelector('.step-time');
+            const stepType = row.querySelector('.step-type');
+            const distanceInput = row.querySelector('.distance-input');
+            const deleteButton = row.querySelector('button');
+            stepName.setAttribute('oninput', `updateMethodEntry(${newIndex})`);
+            stepTime.setAttribute('oninput', `updateMethodEntry(${newIndex})`);
+            stepType.setAttribute('onchange', `updateSymbol(${newIndex})`);
+            if (distanceInput) {
+                distanceInput.id = `distance-input-${newIndex}`;
+                const distanceField = distanceInput.querySelector('.step-distance');
+                if (distanceField) distanceField.setAttribute('oninput', `updateDistance(${newIndex})`);
+            }
+            deleteButton.setAttribute('onclick', `deleteMethodRow(${newIndex})`);
+        });
+        updateTotals();
+    }
+
+    function updateTotals() {
+        const totals = { totalTime: 0, totalOperation: 0, totalTransport: 0, totalInspection: 0, totalStorage: 0, totalDelay: 0 };
+        methodEntries.forEach(entry => {
+            if (!entry.type) return;
+            const time = entry.time;
+            const type = entry.type;
+            totals.totalTime += time;
+            if (type === 'İşlem') totals.totalOperation += time;
+            if (type === 'Taşıma') totals.totalTransport += time;
+            if (type === 'Kontrol') totals.totalInspection += time;
+            if (type === 'Depolama') totals.totalStorage += time;
+            if (type === 'Bekleme') totals.totalDelay += time;
+        });
+        document.getElementById('totalTime').textContent = totals.totalTime.toFixed(2);
+        document.getElementById('totalOperation').textContent = totals.totalOperation.toFixed(2);
+        document.getElementById('totalTransport').textContent = totals.totalTransport.toFixed(2);
+        document.getElementById('totalInspection').textContent = totals.totalInspection.toFixed(2);
+        document.getElementById('totalStorage').textContent = totals.totalStorage.toFixed(2);
+        document.getElementById('totalDelay').textContent = totals.totalDelay.toFixed(2);
+    }
+
+    function submitMethodForm() {
+        const rows = document.querySelectorAll('#methodTableBody tr');
+        methodEntries = [];
+        let valid = true;
+        rows.forEach((row, i) => {
+            const step = row.querySelector('.step-name').value || `Adım ${i + 1}`;
+            const time = parseFloat(row.querySelector('.step-time').value) || 0;
+            const type = row.querySelector('.step-type').value;
+            const distance = type === 'Taşıma' ? (parseFloat(row.querySelector('.step-distance')?.value) || 0) : 0;
+            if (!step) {
+                valid = false;
+                alert(`Adım ${i + 1} için bir isim girin.`);
+                return;
+            }
+            if (time <= 0) {
+                valid = false;
+                alert(`Adım ${i + 1} için geçerli bir süre girin.`);
+                return;
+            }
+            if (!type) {
+                valid = false;
+                alert(`Adım ${i + 1} için bir sembol seçin.`);
+                return;
+            }
+            if (type === 'Taşıma' && distance <= 0) {
+                valid = false;
+                alert(`Adım ${i + 1} için taşıma işleminde mesafe girin.`);
+                return;
+            }
+            methodEntries.push({ step, type, time, distance });
+        });
+        if (valid) {
+            currentMode = 'method';
+            calculateMethodChartData();
+            document.getElementById('results-tab').disabled = false;
+            switchTab('results');
+        }
+    }
+
+    function resetMethod() {
+        methodEntries = [];
+        document.getElementById('methodTableBody').innerHTML = '';
+        updateTotals();
+        if (currentMode === 'method') resetCharts();
+    }
+
+    function resetAll() {
+        manualEntries = [];
+        timeData = [];
+        methodEntries = [];
+        document.getElementById('manual-table').innerHTML = '';
+        document.getElementById('methodTableBody').innerHTML = '';
+        document.getElementById('manual-entries').classList.add('hidden');
+        document.getElementById('results-tab').disabled = true;
+        resetCharts();
+        switchTab('home');
+    }
+
+    function resetCharts() {
+        Object.values(charts).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') chart.destroy();
+        });
+        Object.values(charts.operatorBreakdowns).forEach(chart => {
+            if (chart && typeof chart.destroy === 'function') chart.destroy();
+        });
+        charts = {
+            processTimeChart: null,
+            operatorSpeedChart: null,
+            processTypeChart: null,
+            stdDevChart: null,
+            processTrendsChart: null,
+            methodTypeChart: null,
+            operatorBreakdowns: {}
+        };
+        document.getElementById('operatorBreakdowns').innerHTML = '';
+        document.getElementById('vaRatio').textContent = '';
+        document.getElementById('standardTimeResult').classList.add('hidden');
+        document.getElementById('suggestionsResult').classList.add('hidden');
+        document.getElementById('method-flow-table-body').innerHTML = '';
+        document.getElementById('symbol-totals-table-body').innerHTML = '';
+        document.getElementById('symbol-counts-row').innerHTML = '';
+        document.getElementById('analysis-summary').innerHTML = '';
+    }
+
+    function calculateStdDev(values) {
+        if (values.length <= 1) return 0;
+        const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (values.length - 1);
+        return Math.sqrt(variance);
+    }
+
+    function calculateTimeChartData() {
+        resetCharts();
+        const processTimes = {};
+        timeData.forEach(row => {
+            if (!processTimes[row.process]) processTimes[row.process] = { total: 0, count: 0 };
+            processTimes[row.process].total += row.time;
+            processTimes[row.process].count += 1;
+        });
+        const processTimeData = Object.entries(processTimes).map(([name, data]) => ({
+            name,
+            value: data.total / data.count
+        }));
+        charts.processTimeChart = new Chart(document.getElementById('processTimeChart'), {
+            type: 'pie',
+            data: {
+                labels: processTimeData.map(d => d.name),
+                datasets: [{ data: processTimeData.map(d => d.value), backgroundColor: colors.slice(0, processTimeData.length) }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const operatorProcessTimes = {};
+        timeData.forEach(row => {
+            const key = `${row.operator}_${row.process}`;
+            operatorProcessTimes[key] = operatorProcessTimes[key] || { times: [], operator: row.operator, process: row.process };
+            operatorProcessTimes[key].times.push(row.time);
+        });
+        const operatorSpeedData = Object.values(operatorProcessTimes).map(item => ({
+            operator: item.operator,
+            process: item.process,
+            avgTime: item.times.reduce((sum, t) => sum + t, 0) / item.times.length
+        }));
+        const processes = [...new Set(operatorSpeedData.map(d => d.process))];
+        charts.operatorSpeedChart = new Chart(document.getElementById('operatorSpeedChart'), {
+            type: 'bar',
+            data: {
+                labels: processes,
+                datasets: [...new Set(operatorSpeedData.map(d => d.operator))].map((op, i) => ({
+                    label: op,
+                    data: processes.map(p => operatorSpeedData.find(d => d.operator === op && d.process === p)?.avgTime || 0),
+                    backgroundColor: colors[i % colors.length]
+                }))
+            },
+            options: {
+                scales: { y: { title: { display: true, text: 'Ortalama Süre (saniye)' } } },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        const activityTotals = {
+            KD: timeData.reduce((sum, row) => sum + row.vaTime, 0),
+            KDZ: timeData.reduce((sum, row) => sum + row.nvaTime, 0),
+            İKD: timeData.reduce((sum, row) => sum + row.bvaTime, 0)
+        };
+        const processTypeData = [
+            { name: 'KD', value: activityTotals.KD },
+            { name: 'KDZ', value: activityTotals.KDZ },
+            { name: 'İKD', value: activityTotals.İKD }
+        ];
+        charts.processTypeChart = new Chart(document.getElementById('processTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: processTypeData.map(d => d.name),
+                datasets: [{ data: processTypeData.map(d => d.value), backgroundColor: activityColors }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        const total = processTypeData.reduce((sum, d) => sum + d.value, 0);
+        document.getElementById('vaRatio').textContent = `Toplam KD İş Oranı: ${(activityTotals.KD / total * 100 || 0).toFixed(1)}%`;
+
+        const operators = [...new Set(timeData.map(row => row.operator))];
+        const breakdownsDiv = document.getElementById('operatorBreakdowns');
+        breakdownsDiv.innerHTML = '';
+        operators.forEach(operator => {
+            const operatorData = timeData.filter(row => row.operator === operator);
+            const breakdownData = [
+                { name: 'KD', value: operatorData.reduce((sum, row) => sum + row.vaTime, 0) },
+                { name: 'KDZ', value: operatorData.reduce((sum, row) => sum + row.nvaTime, 0) },
+                { name: 'İKD', value: operatorData.reduce((sum, row) => sum + row.bvaTime, 0) }
+            ];
+            const div = document.createElement('div');
+            div.className = 'bg-white p-6 rounded-lg shadow-md';
+            div.innerHTML = `<h3 class="text-lg font-bold mb-4">${operator} Faaliyet Dağılımı</h3><canvas id="chart-${operator}"></canvas>`;
+            breakdownsDiv.appendChild(div);
+            charts.operatorBreakdowns[operator] = new Chart(document.getElementById(`chart-${operator}`), {
+                type: 'pie',
+                data: {
+                    labels: breakdownData.map(d => d.name),
+                    datasets: [{ data: breakdownData.map(d => d.value), backgroundColor: activityColors }]
+                },
+                options: { plugins: { legend: { position: 'bottom' } } }
+            });
+            const opTotal = breakdownData.reduce((sum, d) => sum + d.value, 0);
+            const p = document.createElement('p');
+            p.className = 'mt-4 text-center font-semibold';
+            p.textContent = `KD Oranı: ${(breakdownData[0].value / opTotal * 100 || 0).toFixed(1)}%`;
+            div.appendChild(p);
+        });
+
+        const stdDevData = Object.values(operatorProcessTimes).map(item => ({
+            label: `${item.operator} - ${item.process}`,
+            stdDev: item.times.length > 1 ? calculateStdDev(item.times) : null,
+            count: item.times.length
+        }));
+        const hasValidStdDev = stdDevData.some(d => d.stdDev !== null);
+        if (hasValidStdDev) {
+            charts.stdDevChart = new Chart(document.getElementById('stdDevChart'), {
+                type: 'line',
+                data: {
+                    labels: stdDevData.map(d => d.label),
+                    datasets: [{
+                        label: 'Standart Sapma',
+                        data: stdDevData.map(d => d.stdDev !== null ? d.stdDev : 0),
+                        borderColor: '#8884d8',
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { title: { display: true, text: 'Standart Sapma (saniye)' } },
+                        x: { title: { display: true, text: 'Operatör - Süreç' } }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const stdDev = stdDevData[index].stdDev;
+                                    const count = stdDevData[index].count;
+                                    if (stdDev === null) return `Standart Sapma: Hesaplanamadı (Yetersiz veri: ${count} ölçüm)`;
+                                    return `Standart Sapma: ${stdDev.toFixed(2)} saniye (${count} ölçüm)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('stdDevChart').outerHTML = '<p class="text-center text-red-600">Standart Sapma Analizi için her operatör-süreç kombinasyonunda birden fazla ölçüm gerekli.</p>';
+        }
+
+        const processTrends = {};
+        timeData.forEach((row, index) => {
+            if (!processTrends[row.process]) processTrends[row.process] = [];
+            processTrends[row.process].push({ time: row.time, index });
+        });
+        const processTrendDatasets = Object.keys(processTrends).map((process, i) => ({
+            label: process,
+            data: processTrends[process].map(d => d.time),
+            borderColor: colors[i % colors.length],
+            fill: false,
+            tension: 0.1
+        }));
+        charts.processTrendsChart = new Chart(document.getElementById('processTrendsChart'), {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: Math.max(...Object.values(processTrends).map(arr => arr.length)) }, (_, i) => i + 1),
+                datasets: processTrendDatasets
+            },
+            options: {
+                scales: {
+                    y: { title: { display: true, text: 'Süre (saniye)' } },
+                    x: { title: { display: true, text: 'Ölçüm Numarası' } }
+                },
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+
+        updateAnalysisSummary('time');
+    }
+
+    function calculateMethodChartData() {
+        resetCharts();
+        const typeTotals = {};
+        const typeCounts = { 'İşlem': 0, 'Taşıma': 0, 'Kontrol': 0, 'Depolama': 0, 'Bekleme': 0 };
+        methodEntries.forEach(row => {
+            typeTotals[row.type] = (typeTotals[row.type] || 0) + row.time;
+            if (row.type) typeCounts[row.type]++;
+        });
+        const methodTypeData = Object.entries(typeTotals).map(([name, value]) => ({ name, value }));
+        charts.methodTypeChart = new Chart(document.getElementById('methodTypeChart'), {
+            type: 'bar',
+            data: {
+                labels: methodTypeData.map(d => d.name),
+                datasets: [{
+                    data: methodTypeData.map(d => d.value),
+                    backgroundColor: colors.slice(0, methodTypeData.length)
+                }]
+            },
+            options: {
+                scales: { y: { title: { display: true, text: 'Toplam Süre (saniye)' } } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        const flowTableBody = document.getElementById('method-flow-table-body');
+        flowTableBody.innerHTML = '';
+        const totalTime = methodEntries.reduce((sum, row) => sum + row.time, 0);
+        const totalDistance = methodEntries.reduce((sum, row) => sum + row.distance, 0);
+        methodEntries.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${entry.step}</td>
+                <td class="border px-4 py-2">${entry.type}</td>
+                <td class="border px-4 py-2">${entry.time.toFixed(2)}</td>
+                <td class="border px-4 py-2">${entry.distance.toFixed(2)}</td>
+            `;
+            flowTableBody.appendChild(tr);
+        });
+        const totalRow = document.createElement('tr');
+        totalRow.className = 'font-bold bg-gray-100';
+        totalRow.innerHTML = `
+            <td class="border px-4 py-2">Toplam</td>
+            <td class="border px-4 py-2"></td>
+            <td class="border px-4 py-2">${totalTime.toFixed(2)}</td>
+            <td class="border px-4 py-2">${totalDistance.toFixed(2)}</td>
+        `;
+        flowTableBody.appendChild(totalRow);
+
+        const symbolTotalsTableBody = document.getElementById('symbol-totals-table-body');
+        symbolTotalsTableBody.innerHTML = '';
+        const trTotals = document.createElement('tr');
+        trTotals.innerHTML = `
+            <td class="border px-4 py-2">${(typeTotals['İşlem'] || 0).toFixed(2)}</td>
+            <td class="border px-4 py-2">${(typeTotals['Taşıma'] || 0).toFixed(2)}</td>
+            <td class="border px-4 py-2">${(typeTotals['Kontrol'] || 0).toFixed(2)}</td>
+            <td class="border px-4 py-2">${(typeTotals['Depolama'] || 0).toFixed(2)}</td>
+            <td class="border px-4 py-2">${(typeTotals['Bekleme'] || 0).toFixed(2)}</td>
+        `;
+        symbolTotalsTableBody.appendChild(trTotals);
+
+        const symbolCountsRow = document.getElementById('symbol-counts-row');
+        symbolCountsRow.innerHTML = `
+            <td class="border px-4 py-2">${typeCounts['İşlem']}</td>
+            <td class="border px-4 py-2">${typeCounts['Taşıma']}</td>
+            <td class="border px-4 py-2">${typeCounts['Kontrol']}</td>
+            <td class="border px-4 py-2">${typeCounts['Depolama']}</td>
+            <td class="border px-4 py-2">${typeCounts['Bekleme']}</td>
+        `;
+
+        updateAnalysisSummary('method');
+    }
+
+    function updateAnalysisSummary(mode) {
+        const summaryList = document.getElementById('analysis-summary');
+        summaryList.innerHTML = '';
+        if (mode === 'time') {
+            const items = [
+                'Süreç süre dağılımı',
+                'Operatör hız karşılaştırması',
+                'KD-KDZ-İKD dağılımı (genel)',
+                'Operatöre göre KD-KDZ-İKD',
+                'Standart sapma analizi',
+                'Süreç süre trendleri',
+                'Standart süre hesaplama',
+                'İyileştirme önerileri'
+            ];
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                summaryList.appendChild(li);
+            });
+        } else if (mode === 'method') {
+            const items = [
+                'Adım türü dağılımı',
+                'Süreç akış analizi',
+                'Sembol alt toplamları ve işlem sayıları'
+            ];
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                summaryList.appendChild(li);
+            });
+        }
+    }
+
+    function calculateStandardTime() {
+        const toleranceValue = parseFloat(document.getElementById('toleranceValue').value);
+        if (isNaN(toleranceValue) || toleranceValue < 0) {
+            alert('Lütfen geçerli bir tolerans değeri girin.');
+            return;
+        }
+
+        const processTimes = {};
+        timeData.forEach(row => {
+            if (!processTimes[row.process]) processTimes[row.process] = { total: 0, count: 0 };
+            processTimes[row.process].total += row.time;
+            processTimes[row.process].count += 1;
+        });
+
+        const processAverages = Object.values(processTimes).map(p => p.total / p.count);
+        const totalStandardTime = processAverages.reduce((sum, time) => sum + time, 0);
+        const standardTimeWithTolerance = totalStandardTime * (1 + toleranceValue / 100);
+
+        document.getElementById('standardTimeValue').textContent = 
+            `Standart Süre: ${standardTimeWithTolerance.toFixed(2)} saniye (Normal Süre: ${totalStandardTime.toFixed(2)} saniye + %${toleranceValue} Tolerans) [Performans %100 kabul edilmiştir.]`;
+        document.getElementById('standardTimeResult').classList.remove('hidden');
+    }
+
+    function generateSuggestions() {
+        const processOperatorTimes = {};
+        timeData.forEach(row => {
+            const key = row.process;
+            if (!processOperatorTimes[key]) processOperatorTimes[key] = {};
+            if (!processOperatorTimes[key][row.operator]) processOperatorTimes[key][row.operator] = { times: [], count: 0 };
+            processOperatorTimes[key][row.operator].times.push(row.time);
+            processOperatorTimes[key][row.operator].count++;
+        });
+
+        const suggestions = [];
+        for (const process in processOperatorTimes) {
+            const operators = processOperatorTimes[process];
+            const allTimes = Object.values(operators).flatMap(op => op.times);
+            const processAvg = allTimes.reduce((sum, t) => sum + t, 0) / allTimes.length || 0;
+            const threshold = 0.15;
+            let fastestOperator = null;
+            let minAvgTime = Infinity;
+
+            suggestions.push(`<h4 class="font-bold mt-4">${process}</h4>`);
+            suggestions.push(`<p>Bu süreç için ortalama süre: ${processAvg.toFixed(2)} saniye</p>`);
+            suggestions.push('<ul class="list-disc list-inside">');
+            for (const operator in operators) {
+                const avgTime = operators[operator].times.reduce((sum, t) => sum + t, 0) / operators[operator].count;
+                const deviation = processAvg ? (avgTime - processAvg) / processAvg : 0;
+                if (avgTime < minAvgTime) {
+                    minAvgTime = avgTime;
+                    fastestOperator = operator;
+                }
+                let suggestion = `${operator}: Ortalama süre = ${avgTime.toFixed(2)} saniye - `;
+                if (deviation < -threshold) {
+                    suggestion += `<span class="text-green-600">Çok uygun (ortalamadan ${(deviation * 100).toFixed(1)}% daha hızlı)</span>`;
+                } else if (deviation > threshold) {
+                    suggestion += `<span class="text-red-600">Eğitime ihtiyacı var (ortalamadan ${(deviation * 100).toFixed(1)}% daha yavaş)</span>`;
+                } else {
+                    suggestion += 'Performans ortalama.';
+                }
+                suggestions.push(`<li>${suggestion}</li>`);
+            }
+            suggestions.push('</ul>');
+            if (fastestOperator) {
+                suggestions.push(`<p class="font-semibold">Öneri: ${fastestOperator}, ${process} için en uygun operatör (${minAvgTime.toFixed(2)} saniye ortalama süre).</p>`);
+            }
+        }
+        document.getElementById('suggestionsContent').innerHTML = suggestions.join('');
+        document.getElementById('suggestionsResult').classList.remove('hidden');
+    }
+
+    function downloadSampleExcel() {
+        const headers = ['Operatör', 'Süreç', 'Süre', 'Kategori'];
+        const data = sampleData.map(row => [row.operator, row.process, row.time, row.category]);
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Örnek Veri');
+        XLSX.writeFile(wb, 'ornek_veri.xlsx');
+    }
+
+    function downloadManualExcel() {
+        if (manualEntries.length === 0) {
+            alert('İndirilecek veri yok.');
+            return;
+        }
+        const headers = ['Operatör', 'Süreç', 'Süre', 'Kategori'];
+        const data = manualEntries.map(row => [row.operator, row.process, row.time, row.category]);
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Manuel Girişler');
+        XLSX.writeFile(wb, 'elle_girisler.xlsx');
+    }
+
+    function downloadMethodExcel() {
+        if (methodEntries.length === 0) {
+            alert('İndirilecek veri yok.');
+            return;
+        }
+        const headers = ['Adım', 'Tür', 'Süre (s)', 'Mesafe (m)'];
+        const data = methodEntries.map(row => [
+            row.step,
+            row.type,
+            row.time.toFixed(2),
+            row.distance.toFixed(2)
+        ]);
+        const totalTime = methodEntries.reduce((sum, row) => sum + row.time, 0);
+        const totalDistance = methodEntries.reduce((sum, row) => sum + row.distance, 0);
+        const totalRow = ['Toplam', '', totalTime.toFixed(2), totalDistance.toFixed(2)];
+        const wsData = [['Süreç Akış Analizi'], [], headers, ...data, totalRow];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 10 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'Metot Etüdü');
+        XLSX.writeFile(wb, 'yontem_calismasi_sonuc.xlsx');
+    }
+
+    // Zaman Etüdü PDF İndirme
+    async function downloadTimeStudyPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const margin = 10;
+        let yOffset = 10;
+
+        // Başlık
+        doc.setFontSize(16);
+        doc.text('Zaman Etüdü Analiz Raporu', margin, yOffset);
+        yOffset += 10;
+
+        // Tarih ve saat
+        const now = new Date();
+        doc.setFontSize(10);
+        doc.text(`Oluşturulma Tarihi: ${now.toLocaleString('tr-TR')}`, margin, yOffset);
+        yOffset += 10;
+
+        // Grafik ekleme fonksiyonu
+        async function addCanvas(canvasId, title) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            const imgData = await html2canvas(canvas).then(canvas => canvas.toDataURL('image/png'));
+            const imgProps = doc.getImageProperties(imgData);
+            const pdfWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+            const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            if (yOffset + imgHeight + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+
+            doc.setFontSize(12);
+            doc.text(title, margin, yOffset);
+            yOffset += 5;
+            doc.addImage(imgData, 'PNG', margin, yOffset, pdfWidth, imgHeight);
+            yOffset += imgHeight + 10;
+        }
+
+        // Grafikleri ekle
+        await addCanvas('processTimeChart', 'Süreç Süre Dağılımı');
+        await addCanvas('operatorSpeedChart', 'Operatör Hız Karşılaştırması');
+        await addCanvas('processTypeChart', 'KD-KDZ-İKD Dağılımı');
+        await addCanvas('stdDevChart', 'Standart Sapma Analizi');
+        await addCanvas('processTrendsChart', 'Süreç Süre Trendleri');
+
+        // Operatör bazlı grafikleri ekle
+        const operatorCharts = document.querySelectorAll('#operatorBreakdowns canvas');
+        for (let i = 0; i < operatorCharts.length; i++) {
+            const operator = operatorCharts[i].id.replace('chart-', '');
+            await addCanvas(operatorCharts[i].id, `${operator} Faaliyet Dağılımı`);
+        }
+
+        // KD Oranı
+        const vaRatio = document.getElementById('vaRatio').textContent;
+        if (vaRatio) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text('KD Oranı', margin, yOffset);
+            yOffset += 5;
+            doc.setFontSize(10);
+            doc.text(vaRatio, margin, yOffset);
+            yOffset += 10;
+        }
+
+        // Standart Süre
+        const standardTime = document.getElementById('standardTimeValue').textContent;
+        if (standardTime) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text('Standart Süre', margin, yOffset);
+            yOffset += 5;
+            doc.setFontSize(10);
+            doc.text(standardTime, margin, yOffset);
+            yOffset += 10;
+        }
+
+        // İyileştirme Önerileri
+        const suggestionsContent = document.getElementById('suggestionsContent');
+        const suggestions = suggestionsContent.innerHTML;
+        if (suggestions && !suggestionsContent.classList.contains('hidden')) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text('İyileştirme Önerileri', margin, yOffset);
+            yOffset += 5;
+
+            // HTML'den metni çıkar ve satırlara böl
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = suggestions;
+            const textContent = tempDiv.textContent.split('\n').filter(line => line.trim());
+            doc.setFontSize(10);
+            textContent.forEach(line => {
+                if (yOffset + 5 > doc.internal.pageSize.getHeight()) {
+                    doc.addPage();
+                    yOffset = margin;
+                }
+                doc.text(line.trim(), margin, yOffset);
+                yOffset += 5;
+            });
+        }
+
+        // PDF'yi kaydet
+	doc.save('zaman_etudu_raporu.pdf');
+    }
+
+    // Zaman Etüdü PDF İndirme (Metin ve Tablo Bazlı)
+    async function downloadTimeStudyPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const margin = 10;
+        let yOffset = 10;
+
+        // Başlık
+        doc.setFontSize(16);
+        doc.text('Zaman Etüdü Analiz Raporu', margin, yOffset);
+        yOffset += 10;
+
+        // Tarih ve saat
+        const now = new Date();
+        doc.setFontSize(10);
+        doc.text(`Oluşturulma Tarihi: ${now.toLocaleString('tr-TR')}`, margin, yOffset);
+        yOffset += 10;
+
+        // Genel Değerlendirme
+        doc.setFontSize(12);
+        doc.text('Genel Değerlendirme', margin, yOffset);
+        yOffset += 5;
+
+        // Süreç Süre Dağılımı Tablosu
+        const processTimes = {};
+        timeData.forEach(row => {
+            if (!processTimes[row.process]) processTimes[row.process] = { total: 0, count: 0 };
+            processTimes[row.process].total += row.time;
+            processTimes[row.process].count += 1;
+        });
+        const processTableData = Object.entries(processTimes).map(([name, data]) => [
+            name,
+            (data.total / data.count).toFixed(2)
+        ]);
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [['Süreç', 'Ortalama Süre (s)']],
+            body: processTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin }
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // KD-KDZ-İKD Dağılımı
+        const activityTotals = {
+            KD: timeData.reduce((sum, row) => sum + row.vaTime, 0),
+            KDZ: timeData.reduce((sum, row) => sum + row.nvaTime, 0),
+            İKD: timeData.reduce((sum, row) => sum + row.bvaTime, 0)
+        };
+        const total = activityTotals.KD + activityTotals.KDZ + activityTotals.İKD;
+        const activityTableData = [
+            ['Katma Değerli (KD)', activityTotals.KD.toFixed(2), `${(activityTotals.KD / total * 100 || 0).toFixed(1)}%`],
+            ['Katma Değersiz (KDZ)', activityTotals.KDZ.toFixed(2), `${(activityTotals.KDZ / total * 100 || 0).toFixed(1)}%`],
+            ['İş için Katma Değerli (İKD)', activityTotals.İKD.toFixed(2), `${(activityTotals.İKD / total * 100 || 0).toFixed(1)}%`]
+        ];
+
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text('KD-KDZ-İKD Dağılımı', margin, yOffset);
+        yOffset += 5;
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [['Kategori', 'Toplam Süre (s)', 'Oran']],
+            body: activityTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin }
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // Operatör Bazlı Değerlendirme
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text('Operatör Bazlı Değerlendirme', margin, yOffset);
+        yOffset += 5;
+
+        const operators = [...new Set(timeData.map(row => row.operator))];
+        operators.forEach(operator => {
+            const operatorData = timeData.filter(row => row.operator === operator);
+            const breakdownData = [
+                ['Katma Değerli (KD)', operatorData.reduce((sum, row) => sum + row.vaTime, 0).toFixed(2)],
+                ['Katma Değersiz (KDZ)', operatorData.reduce((sum, row) => sum + row.nvaTime, 0).toFixed(2)],
+                ['İş için Katma Değerli (İKD)', operatorData.reduce((sum, row) => sum + row.bvaTime, 0).toFixed(2)]
+            ];
+            const opTotal = operatorData.reduce((sum, row) => sum + row.time, 0);
+            breakdownData.push(['Toplam', opTotal.toFixed(2)]);
+
+            doc.setFontSize(10);
+            doc.text(`Operatör: ${operator}`, margin, yOffset);
+            yOffset += 5;
+
+            doc.autoTable({
+                startY: yOffset,
+                head: [['Kategori', 'Süre (s)']],
+                body: breakdownData,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+                margin: { left: margin, right: margin }
+            });
+            yOffset = doc.lastAutoTable.finalY + 5;
+
+            const kdRatio = (operatorData.reduce((sum, row) => sum + row.vaTime, 0) / opTotal * 100 || 0).toFixed(1);
+            doc.setFontSize(8);
+            doc.text(`KD Oranı: ${kdRatio}%`, margin, yOffset);
+            yOffset += 10;
+        });
+
+        // Standart Süre
+        const standardTime = document.getElementById('standardTimeValue').textContent;
+        if (standardTime) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text('Standart Süre', margin, yOffset);
+            yOffset += 5;
+            doc.setFontSize(10);
+            doc.text(standardTime, margin, yOffset);
+            yOffset += 10;
+        }
+
+        // İyileştirme Önerileri
+        const suggestionsContent = document.getElementById('suggestionsContent');
+        const suggestions = suggestionsContent.innerHTML;
+        if (suggestions && !suggestionsContent.classList.contains('hidden')) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text('İyileştirme Önerileri', margin, yOffset);
+            yOffset += 5;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = suggestions;
+            const textContent = tempDiv.textContent.split('\n').filter(line => line.trim());
+            doc.setFontSize(8);
+            textContent.forEach(line => {
+                if (yOffset + 5 > doc.internal.pageSize.getHeight()) {
+                    doc.addPage();
+                    yOffset = margin;
+                }
+                const lines = doc.splitTextToSize(line.trim(), doc.internal.pageSize.getWidth() - 2 * margin);
+                lines.forEach(splitLine => {
+                    doc.text(splitLine, margin, yOffset);
+                    yOffset += 4;
+                });
+            });
+        }
+
+        // PDF'yi kaydet
+        doc.save('zaman_etudu_raporu.pdf');
+    }
+
+    // Türkçe karakterleri Latin alfabesine çeviren yardımcı fonksiyon
+    function replaceTurkishChars(text) {
+        const turkishMap = {
+            'İ': 'I', 'ı': 'i',
+            'Ş': 'S', 'ş': 's',
+            'Ğ': 'G', 'ğ': 'g',
+            'Ü': 'U', 'ü': 'u',
+            'Ç': 'C', 'ç': 'c',
+            'Ö': 'O', 'ö': 'o'
+        };
+        return text.replace(/[İıŞşĞğÜüÇçÖö]/g, match => turkishMap[match]);
+    }
+
+    // Zaman Etüdü PDF İndirme (Türkçe karakterler Latin alfabesine çevrildi)
+    async function downloadTimeStudyPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const margin = 10;
+        let yOffset = 10;
+
+        // Başlık
+        doc.setFontSize(16);
+        doc.text(replaceTurkishChars('Zaman Etudu Analiz Raporu'), margin, yOffset);
+        yOffset += 10;
+
+        // Tarih ve saat
+        const now = new Date();
+        doc.setFontSize(10);
+        doc.text(replaceTurkishChars(`Olusturulma Tarihi: ${now.toLocaleString('tr-TR')}`), margin, yOffset);
+        yOffset += 10;
+
+        // Genel Değerlendirme
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Genel Degerlendirme'), margin, yOffset);
+        yOffset += 5;
+
+        // Süreç Süre Dağılımı Tablosu
+        const processTimes = {};
+        timeData.forEach(row => {
+            if (!processTimes[row.process]) processTimes[row.process] = { total: 0, count: 0 };
+            processTimes[row.process].total += row.time;
+            processTimes[row.process].count += 1;
+        });
+        const processTableData = Object.entries(processTimes).map(([name, data]) => [
+            replaceTurkishChars(name),
+            (data.total / data.count).toFixed(2)
+        ]);
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Surec'), replaceTurkishChars('Ortalama Sure (s)')]],
+            body: processTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin }
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // KD-KDZ-İKD Dağılımı
+        const activityTotals = {
+            KD: timeData.reduce((sum, row) => sum + row.vaTime, 0),
+            KDZ: timeData.reduce((sum, row) => sum + row.nvaTime, 0),
+            IKD: timeData.reduce((sum, row) => sum + row.bvaTime, 0)
+        };
+        const total = activityTotals.KD + activityTotals.KDZ + activityTotals.IKD;
+        const activityTableData = [
+            [replaceTurkishChars('Katma Degerli (KD)'), activityTotals.KD.toFixed(2), `${(activityTotals.KD / total * 100 || 0).toFixed(1)}%`],
+            [replaceTurkishChars('Katma Degersiz (KDZ)'), activityTotals.KDZ.toFixed(2), `${(activityTotals.KDZ / total * 100 || 0).toFixed(1)}%`],
+            [replaceTurkishChars('Is icin Katma Degerli (IKD)'), activityTotals.IKD.toFixed(2), `${(activityTotals.IKD / total * 100 || 0).toFixed(1)}%`]
+        ];
+
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('KD-KDZ-IKD Dagilimi'), margin, yOffset);
+        yOffset += 5;
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Kategori'), replaceTurkishChars('Toplam Sure (s)'), replaceTurkishChars('Oran')]],
+            body: activityTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin }
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // Operatör Bazlı Değerlendirme
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Operator Bazli Degerlendirme'), margin, yOffset);
+        yOffset += 10;
+
+        const operators = [...new Set(timeData.map(row => row.operator))];
+        operators.forEach(operator => {
+            const operatorData = timeData.filter(row => row.operator === operator);
+            const breakdownData = [
+                [replaceTurkishChars('Katma Degerli (KD)'), operatorData.reduce((sum, row) => sum + row.vaTime, 0).toFixed(2)],
+                [replaceTurkishChars('Katma Degersiz (KDZ)'), operatorData.reduce((sum, row) => sum + row.nvaTime, 0).toFixed(2)],
+                [replaceTurkishChars('Is icin Katma Degerli (IKD)'), operatorData.reduce((sum, row) => sum + row.bvaTime, 0).toFixed(2)]
+            ];
+            const opTotal = operatorData.reduce((sum, row) => sum + row.time, 0);
+            breakdownData.push([replaceTurkishChars('Toplam'), opTotal.toFixed(2)]);
+
+            doc.setFontSize(10);
+            doc.text(replaceTurkishChars(`Operator: ${operator}`), margin, yOffset);
+            yOffset += 5;
+
+            doc.autoTable({
+                startY: yOffset,
+                head: [[replaceTurkishChars('Kategori'), replaceTurkishChars('Sure (s)')]],
+                body: breakdownData,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+                margin: { left: margin, right: margin }
+            });
+            yOffset = doc.lastAutoTable.finalY + 5;
+
+            const kdRatio = (operatorData.reduce((sum, row) => sum + row.vaTime, 0) / opTotal * 100 || 0).toFixed(1);
+            doc.setFontSize(8);
+            doc.text(replaceTurkishChars(`KD Orani: ${kdRatio}%`), margin, yOffset);
+            yOffset += 10;
+        });
+
+        // Standart Süre
+        const standardTime = document.getElementById('standardTimeValue').textContent;
+        if (standardTime) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text(replaceTurkishChars('Standart Sure'), margin, yOffset);
+            yOffset += 5;
+            doc.setFontSize(10);
+            doc.text(replaceTurkishChars(standardTime), margin, yOffset);
+            yOffset += 10;
+        }
+
+
+
+        // PDF'yi kaydet
+        doc.save('zaman_etudu_raporu.pdf');
+    }
+
+    // Türkçe karakterleri Latin alfabesine çeviren yardımcı fonksiyon
+    function replaceTurkishChars(text) {
+        const turkishMap = {
+            'İ': 'I', 'ı': 'i',
+            'Ş': 'S', 'ş': 's',
+            'Ğ': 'G', 'ğ': 'g',
+            'Ü': 'U', 'ü': 'u',
+            'Ç': 'C', 'ç': 'c',
+            'Ö': 'O', 'ö': 'o'
+        };
+        return text.replace(/[İıŞşĞğÜüÇçÖö]/g, match => turkishMap[match]);
+    }
+
+    // Zaman Etüdü PDF İndirme (Tablo başlıkları sadece ilk sayfada)
+    async function downloadTimeStudyPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const margin = 10;
+        let yOffset = 10;
+
+        // Başlık
+        doc.setFontSize(16);
+        doc.text(replaceTurkishChars('Zaman Etudu Analiz Raporu'), margin, yOffset);
+        yOffset += 10;
+
+        // Tarih ve saat
+        const now = new Date();
+        doc.setFontSize(10);
+        doc.text(replaceTurkishChars(`Olusturulma Tarihi: ${now.toLocaleString('tr-TR')}`), margin, yOffset);
+        yOffset += 10;
+
+        // Genel Değerlendirme
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Genel Degerlendirme'), margin, yOffset);
+        yOffset += 5;
+
+        // Süreç Süre Dağılımı Tablosu
+        const processTimes = {};
+        timeData.forEach(row => {
+            if (!processTimes[row.process]) processTimes[row.process] = { total: 0, count: 0 };
+            processTimes[row.process].total += row.time;
+            processTimes[row.process].count += 1;
+        });
+        const processTableData = Object.entries(processTimes).map(([name, data]) => [
+            replaceTurkishChars(name),
+            (data.total / data.count).toFixed(2)
+        ]);
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Surec'), replaceTurkishChars('Ortalama Sure (s)')]],
+            body: processTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+            showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // KD-KDZ-İKD Dağılımı
+        const activityTotals = {
+            KD: timeData.reduce((sum, row) => sum + row.vaTime, 0),
+            KDZ: timeData.reduce((sum, row) => sum + row.nvaTime, 0),
+            IKD: timeData.reduce((sum, row) => sum + row.bvaTime, 0)
+        };
+        const total = activityTotals.KD + activityTotals.KDZ + activityTotals.IKD;
+        const activityTableData = [
+            [replaceTurkishChars('Katma Degerli (KD)'), activityTotals.KD.toFixed(2), `${(activityTotals.KD / total * 100 || 0).toFixed(1)}%`],
+            [replaceTurkishChars('Katma Degersiz (KDZ)'), activityTotals.KDZ.toFixed(2), `${(activityTotals.KDZ / total * 100 || 0).toFixed(1)}%`],
+            [replaceTurkishChars('Is icin Katma Degerli (IKD)'), activityTotals.IKD.toFixed(2), `${(activityTotals.IKD / total * 100 || 0).toFixed(1)}%`]
+        ];
+
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('KD-KDZ-IKD Dagilimi'), margin, yOffset);
+        yOffset += 5;
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Kategori'), replaceTurkishChars('Toplam Sure (s)'), replaceTurkishChars('Oran')]],
+            body: activityTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+            showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // Operatör Bazlı Değerlendirme
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Operator Bazli Degerlendirme'), margin, yOffset);
+        yOffset += 10;
+
+        const operators = [...new Set(timeData.map(row => row.operator))];
+        operators.forEach(operator => {
+            const operatorData = timeData.filter(row => row.operator === operator);
+            const breakdownData = [
+                [replaceTurkishChars('Katma Degerli (KD)'), operatorData.reduce((sum, row) => sum + row.vaTime, 0).toFixed(2)],
+                [replaceTurkishChars('Katma Degersiz (KDZ)'), operatorData.reduce((sum, row) => sum + row.nvaTime, 0).toFixed(2)],
+                [replaceTurkishChars('Is icin Katma Degerli (IKD)'), operatorData.reduce((sum, row) => sum + row.bvaTime, 0).toFixed(2)]
+            ];
+            const opTotal = operatorData.reduce((sum, row) => sum + row.time, 0);
+            breakdownData.push([replaceTurkishChars('Toplam'), opTotal.toFixed(2)]);
+
+            doc.setFontSize(10);
+            doc.text(replaceTurkishChars(`Operator: ${operator}`), margin, yOffset);
+            yOffset += 5;
+
+            doc.autoTable({
+                startY: yOffset,
+                head: [[replaceTurkishChars('Kategori'), replaceTurkishChars('Sure (s)')]],
+                body: breakdownData,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2 },
+                headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+                margin: { left: margin, right: margin },
+                showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+            });
+            yOffset = doc.lastAutoTable.finalY + 5;
+
+            const kdRatio = (operatorData.reduce((sum, row) => sum + row.vaTime, 0) / opTotal * 100 || 0).toFixed(1);
+            doc.setFontSize(8);
+            doc.text(replaceTurkishChars(`KD Orani: ${kdRatio}%`), margin, yOffset);
+            yOffset += 10;
+        });
+
+        // Standart Süre
+        const standardTime = document.getElementById('standardTimeValue').textContent;
+        if (standardTime) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text(replaceTurkishChars('Standart Sure'), margin, yOffset);
+            yOffset += 5;
+            doc.setFontSize(10);
+            doc.text(replaceTurkishChars(standardTime), margin, yOffset);
+            yOffset += 10;
+        }
+
+        // İyileştirme Önerileri
+        const suggestionsContent = document.getElementById('suggestionsContent');
+        const suggestions = suggestionsContent.innerHTML;
+        if (suggestions && !suggestionsContent.classList.contains('hidden')) {
+            if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+                doc.addPage();
+                yOffset = margin;
+            }
+            doc.setFontSize(12);
+            doc.text(replaceTurkishChars('Iyilestirme Onerileri'), margin, yOffset);
+            yOffset += 5;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = suggestions;
+            const textContent = tempDiv.textContent.split('\n').filter(line => line.trim());
+            doc.setFontSize(8);
+            textContent.forEach(line => {
+                if (yOffset + 5 > doc.internal.pageSize.getHeight()) {
+                    doc.addPage();
+                    yOffset = margin;
+                }
+                const cleanedLine = replaceTurkishChars(line.trim());
+                const lines = doc.splitTextToSize(cleanedLine, doc.internal.pageSize.getWidth() - 2 * margin);
+                lines.forEach(splitLine => {
+                    doc.text(splitLine, margin, yOffset);
+                    yOffset += 4;
+                });
+            });
+        }
+
+        // PDF'yi kaydet
+        doc.save('zaman_etudu_raporu.pdf');
+    }
+
+    // Metot Etüdü PDF İndirme (Tablo başlıkları sadece ilk sayfada)
+    async function downloadMethodStudyPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const margin = 10;
+        let yOffset = 10;
+
+        // Başlık
+        doc.setFontSize(16);
+        doc.text(replaceTurkishChars('Metot Etudu Analiz Raporu'), margin, yOffset);
+        yOffset += 10;
+
+        // Tarih ve saat
+        const now = new Date();
+        doc.setFontSize(10);
+        doc.text(replaceTurkishChars(`Olusturulma Tarihi: ${now.toLocaleString('tr-TR')}`), margin, yOffset);
+        yOffset += 10;
+
+        // Genel Özet
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Genel Ozet'), margin, yOffset);
+        yOffset += 5;
+        const totalTime = methodEntries.reduce((sum, row) => sum + row.time, 0);
+        const totalDistance = methodEntries.reduce((sum, row) => sum + row.distance, 0);
+        doc.setFontSize(10);
+        doc.text(replaceTurkishChars(`Toplam Sure: ${totalTime.toFixed(2)} saniye`), margin, yOffset);
+        yOffset += 5;
+        doc.text(replaceTurkishChars(`Toplam Mesafe: ${totalDistance.toFixed(2)} metre`), margin, yOffset);
+        yOffset += 10;
+
+        // Adım Türü Dağılımı
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Adim Turu Dagilimi'), margin, yOffset);
+        yOffset += 5;
+
+        const typeTotals = {};
+        methodEntries.forEach(row => {
+            typeTotals[row.type] = (typeTotals[row.type] || 0) + row.time;
+        });
+        const typeTableData = Object.entries(typeTotals).map(([type, time]) => [
+            replaceTurkishChars(type),
+            time.toFixed(2)
+        ]);
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Adim Turu'), replaceTurkishChars('Toplam Sure (s)')]],
+            body: typeTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+            showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // Süreç Akış Analizi
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Surec Akis Analizi'), margin, yOffset);
+        yOffset += 5;
+
+        const flowTableData = methodEntries.map(entry => [
+            replaceTurkishChars(entry.step),
+            replaceTurkishChars(entry.type),
+            entry.time.toFixed(2),
+            entry.distance.toFixed(2)
+        ]);
+        flowTableData.push([replaceTurkishChars('Toplam'), '', totalTime.toFixed(2), totalDistance.toFixed(2)]);
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Adim'), replaceTurkishChars('Tur'), replaceTurkishChars('Sure (s)'), replaceTurkishChars('Mesafe (m)')]],
+            body: flowTableData,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+            showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // Sembol Alt Toplamları ve İşlem Sayıları
+        if (yOffset + 20 > doc.internal.pageSize.getHeight()) {
+            doc.addPage();
+            yOffset = margin;
+        }
+        doc.setFontSize(12);
+        doc.text(replaceTurkishChars('Sembol Alt Toplamlari ve Islem Sayilari'), margin, yOffset);
+        yOffset += 5;
+
+        const typeCounts = { 'Islem': 0, 'Tasim': 0, 'Kontrol': 0, 'Depolama': 0, 'Bekleme': 0 };
+        methodEntries.forEach(row => {
+            if (row.type) typeCounts[replaceTurkishChars(row.type)]++;
+        });
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Islem (o)'), replaceTurkishChars('Tasim (->)'), replaceTurkishChars('Kontrol ([])'), replaceTurkishChars('Depolama (v)'), replaceTurkishChars('Bekleme (D)')]],
+            body: [[
+                typeTotals['Islem']?.toFixed(2) || '0.00',
+                typeTotals['Tasim']?.toFixed(2) || '0.00',
+                typeTotals['Kontrol']?.toFixed(2) || '0.00',
+                typeTotals['Depolama']?.toFixed(2) || '0.00',
+                typeTotals['Bekleme']?.toFixed(2) || '0.00'
+            ]],
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+            showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        doc.autoTable({
+            startY: yOffset,
+            head: [[replaceTurkishChars('Islem Sayisi'), '', '', '', '']],
+            body: [
+                [replaceTurkishChars('Islem (o)'), replaceTurkishChars('Tasim (->)'), replaceTurkishChars('Kontrol ([])'), replaceTurkishChars('Depolama (v)'), replaceTurkishChars('Bekleme (D)')],
+                [
+                    typeCounts['Islem'],
+                    typeCounts['Tasim'],
+                    typeCounts['Kontrol'],
+                    typeCounts['Depolama'],
+                    typeCounts['Bekleme']
+                ]
+            ],
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [66, 139, 202], textColor: [255, 255, 255] },
+            margin: { left: margin, right: margin },
+            showHead: 'firstPage' // Başlık sadece ilk sayfada görünecek
+        });
+        yOffset = doc.lastAutoTable.finalY + 10;
+
+        // PDF'yi kaydet
+        doc.save('metot_etudu_raporu.pdf');
+    }
+</script>
+</body>
+</html>
+
